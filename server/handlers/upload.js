@@ -1,45 +1,45 @@
 
-const { Blob } = require("node:buffer");
-const fs = require("node:fs");
+const fs = require("node:fs/promises");
+const path = require("node:path");
 
 
 let videos = [];
+
 
 
 function upload(req, res) {
     const buffer = req.body;
     const headers = req.headers;
 
-    console.log(headers);
-
-
     const videoId = headers["h-video-id"];
-    const chunkInd = headers["h-chunk-ind"];
-    const chunksNumber = headers["h-chunk-number"];
+    const chunkInd = parseInt(headers["h-chunk-ind"]);
+    const chunksNumber = parseInt(headers["h-chunk-number"]);
+    const fileType = headers["h-file-type"];
 
-    let video = videos.find(video => video.id == videoId);
+    let video = videos.find(v => v.id === videoId);
 
-    if (video) 
-    {
-        video.chunks[chunkInd] = buffer;
-
-        console.log(video);
-        
-    } else {
-        const newVideo = {
-            "id": videoId,
-            "chunks": new Array(parseInt(chunksNumber)).fill(0),
+    if (!video) {
+        video = {
+            id: videoId,
+            chunks: new Array(chunksNumber).fill(null),
+            received: 0,
+            type: fileType,
         };
-        
-        videos.push(newVideo);
-        
-        newVideo.chunks[chunkInd] = buffer;
-        
-        console.log(newVideo);
+        videos.push(video);
     }
 
-    res.status(201).json({ "status": "ok" });
+    if (!video.chunks[chunkInd]) {
+        video.chunks[chunkInd] = buffer;
+        video.received++;
+    }
 
+    if (video.received === chunksNumber) {
+        console.log(`All chunks received for video ${videoId}`);
+        console.log(video);
+        writeToDisk(video);
+    }
+
+    res.status(201).json({ status: "ok" });
 }
 
 
@@ -48,18 +48,27 @@ async function writeToDisk(video) {
     try {
         const videoBuffer = Buffer.concat(video.chunks);
 
-        const filePath = path.join(__dirname, 'uploads', `${video.id}.mp4`);
+        let filePath = ""
+        switch (video.type) {
+            case "image/png":
+                filePath = path.join(__dirname, 'uploads', `${video.id}.png`);
+                break;
+            case "image/jpg":
+                filePath = path.join(__dirname, 'uploads', `${video.id}.jpg`);
+                break;
+            case "image/jpeg":
+                filePath = path.join(__dirname, 'uploads', `${video.id}.jpeg`);
+                break;
+        }
 
         await fs.mkdir(path.dirname(filePath), { recursive: true });
-
         await fs.writeFile(filePath, videoBuffer);
 
-        console.log(`✅ Video ${video.id} saved to ${filePath}`);
+        console.log(`Video ${video.id} saved to ${filePath}`);
     } catch (err) {
         console.error(`Error writing video ${video.id} to disk:`, err);
     }
 }
-
 
 
 module.exports = { upload };
