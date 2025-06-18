@@ -59,6 +59,12 @@ async function writeToDisk(video) {
             case "image/jpeg":
                 filePath = path.join(__dirname, 'uploads', `${video.id}.jpeg`);
                 break;
+            case "video/mp4":
+                filePath = path.join(__dirname, 'uploads', `${video.id}.mp4`);
+                break;
+            default:
+                filePath = path.join(__dirname, 'uploads', `${video.id}.mp4`);
+                break;
         }
 
         await fs.mkdir(path.dirname(filePath), { recursive: true });
