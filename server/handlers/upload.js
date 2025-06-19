@@ -16,6 +16,9 @@ function upload(req, res) {
     const chunksNumber = parseInt(headers["h-chunk-number"]);
     const fileType = headers["h-file-type"];
 
+
+    console.log(`chunk received! Chunk index : ${chunkInd}`);
+
     let video = videos.find(v => v.id === videoId);
 
     if (!video) {
